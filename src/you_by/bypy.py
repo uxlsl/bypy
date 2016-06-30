@@ -55,6 +55,7 @@ from config import (
         DPcsUrl
 )
 import config
+import constants
 from utils import (
         pdbg,
         perr,
@@ -62,41 +63,37 @@ from utils import (
         pr,
         pwarn
 )
-
+from constants import (
+	ENoError,
+	EIncorrectPythonVersion,
+	#EApiNotConfigured ,
+	EArgument,
+	EAbort,
+	EException,
+	EParameter,
+	EInvalidJson,
+	EHashMismatch,
+	EFileWrite,
+	EFileTooBig,
+	EFailToCreateLocalDir,
+	EFailToCreateLocalFile,
+	EFailToDeleteDir,
+	EFailToDeleteFile,
+	EFileNotFound,
+	EMaxRetry,
+	ERequestFailed,
+	ECacheNotLoaded,
+	EMigrationFailed,
+	EDownloadCerts,
+	EUserRejected,
+	EFatal,
+	# internal errors
+	IEMD5NotFound,
+	IESuperfileCreationFailed,
+)
 
 ### special variables that say about this module
 __version__ = '1.2.22'
-
-### return (error) codes
-# they are put at the top because:
-# 1. they have zero dependencies
-# 2. can be referred in any abort later, e.g. return error on import faliures
-ENoError = 0 # plain old OK, fine, no error.
-EIncorrectPythonVersion = 1
-#EApiNotConfigured = 10 # Deprecated: ApiKey, SecretKey and AppPcsPath not properly configured
-EArgument = 10 # invalid program command argument
-EAbort = 20 # aborted
-EException = 30 # unhandled exception occured
-EParameter = 40 # invalid parameter passed to ByPy
-EInvalidJson = 50
-EHashMismatch = 60 # MD5 hashes of the local file and remote file don't match each other
-EFileWrite = 70
-EFileTooBig = 80 # file too big to upload
-EFailToCreateLocalDir = 90
-EFailToCreateLocalFile = 100
-EFailToDeleteDir = 110
-EFailToDeleteFile = 120
-EFileNotFound = 130
-EMaxRetry = 140
-ERequestFailed = 150 # request failed
-ECacheNotLoaded = 160
-EMigrationFailed = 170
-EDownloadCerts = 180
-EUserRejected = 190 # user's decision
-EFatal = -1 # No way to continue
-# internal errors
-IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
-IESuperfileCreationFailed = 31081 # superfile create failed
 
 DownloaderAria2 = 'aria2'
 Downloaders = [DownloaderAria2]
@@ -130,7 +127,7 @@ if sys.version_info[0] < 2 \
 or (sys.version_info[0] == 2 and sys.version_info[1] < 7) \
 or (sys.version_info[0] == 3 and sys.version_info[1] < 3):
 	print("Error: Incorrect Python version. You need 2.7 / 3.3 or above")
-	sys.exit(EIncorrectPythonVersion)
+	sys.exit(constants.EIncorrectPythonVersion)
 import io
 import locale
 import codecs
@@ -486,7 +483,7 @@ def is_pcs_root_path(path):
 
 # guarantee no-exception
 def copyfile(src, dst):
-	result = ENoError
+	result = constants.ENoError
 	try:
 		shutil.copyfile(src, dst)
 	except (shutil.Error, IOError) as ex:
@@ -497,7 +494,7 @@ def copyfile(src, dst):
 	return result
 
 def movefile(src, dst):
-	result = ENoError
+	result = constants.ENoError
 	try:
 		shutil.move(src, dst)
 	except (shutil.Error, OSError) as ex:
@@ -508,7 +505,7 @@ def movefile(src, dst):
 	return result
 
 def removefile(path, verbose = False):
-	result = ENoError
+	result = constants.ENoError
 	try:
 		if verbose:
 			pr("Removing local file '{}'".format(path))
@@ -522,7 +519,7 @@ def removefile(path, verbose = False):
 	return result
 
 def removedir(path, verbose = False):
-	result = ENoError
+	result = constants.ENoError
 	try:
 		if verbose:
 			pr("Removing local directory '{}'".format(path))
@@ -536,7 +533,7 @@ def removedir(path, verbose = False):
 	return result
 
 def makedir(path, mode = 0o777, verbose = False):
-	result = ENoError
+	result = constants.ENoError
 
 	if verbose:
 		pr("Creating local directory '{}'".format(path))
@@ -1112,7 +1109,7 @@ class ByPy(object):
 	# TODO: Apply to configdir instead of ~/.bypy
 	@staticmethod
 	def migratesettings():
-		result = ENoError
+		result = constants.ENoError
 
 		filesToMove = [
 			[config.OldTokenFilePath, config.TokenFilePath],
@@ -1121,7 +1118,7 @@ class ByPy(object):
 
 		result = makedir(config.ConfigDir, 0o700) and result # make it secretive
 		# this directory must exist
-		if result != ENoError:
+		if result != constants.ENoError:
 			perr("Fail to create config directory '{}'".format(config.ConfigDir))
 			return result
 
@@ -1151,7 +1148,7 @@ class ByPy(object):
 				"has been merged to '{}'".format(config.PicklePath, config.HashCachePath))
 				mergedfile = config.PicklePath + '.merged'
 				ok = movefile(config.PicklePath, mergedfile)
-				if ok == ENoError:
+				if ok == constants.ENoError:
 					pinfo("Pickle (old format hash cache) '{}' "
 					"has been renamed to '{}".format(PicklePath, mergedfile))
 				else:
@@ -1163,13 +1160,13 @@ class ByPy(object):
 				invalidfile = PicklePath + '.invalid'
 				ok = movefile(PicklePath, invalidfile)
 				perr("{} invalid Pickle (old format hash cache) file '{}' to '{}'".format(
-					"Moved" if ok == ENoError else "Failed to move",
+					"Moved" if ok == constants.ENoError else "Failed to move",
 					PicklePath, invalidfile))
 
 		return result
 
 	def getcertfile(self):
-		result = ENoError
+		result = constants.ENoError
 		if not os.path.exists(self.__certspath):
 			if os.path.exists(config.ByPyCertsFileName):
 				result = copyfile(config.ByPyCertsFileName, self.__certspath)
@@ -1223,7 +1220,7 @@ class ByPy(object):
 
 		# handle backward compatibility, a.k.a. history debt
 		sr = ByPy.migratesettings()
-		if sr != ENoError:
+		if sr != constants.ENoError:
 			# bail out
 			perr("Failed to migrate old settings.")
 			onexit(EMigrationFailed)
@@ -1364,7 +1361,7 @@ class ByPy(object):
 		if not self.__load_local_json():
 			# no need to call __load_local_json() again as __auth() will load the json & acess token.
 			result = self.__auth()
-			if result != ENoError:
+			if result != constants.ENoError:
 				perr("Program authorization FAILED.\n"
 					"You need to authorize this program before using any PCS functions.\n"
 					"Quitting...\n")
@@ -1457,7 +1454,7 @@ class ByPy(object):
 		#raise # must notify the caller about the failure
 
 	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, dumpex = True, **kwargs):
-		result = ENoError
+		result = constants.ENoError
 		r = None
 
 		self.__extraupdate()
@@ -1499,7 +1496,7 @@ class ByPy(object):
 				else:
 					self.pd("206 Partial Content (this is OK), processing action")
 				result = act(r, actargs)
-				if result == ENoError:
+				if result == constants.ENoError:
 					self.pd("Request all goes fine")
 			else:
 				ec = self.__get_json(r)
@@ -1509,7 +1506,7 @@ class ByPy(object):
 				if ec == 111 or ec == 110 or ec == 6: # and sc == 401:
 					self.pd("ec = {}".format(ec))
 					self.pd("Need to refresh token, refreshing")
-					if ENoError == self.__refresh_token(): # refresh the token and re-request
+					if constants.ENoError == self.__refresh_token(): # refresh the token and re-request
 						# TODO: avoid infinite recursive loops
 						# TODO: properly pass retry
 						result = self.__request(url, pars, act, method, actargs, True, addtoken, dumpex, **kwargs)
@@ -1735,7 +1732,7 @@ class ByPy(object):
 		try:
 			jsondump(self.__json, self.__tokenpath)
 			os.chmod(self.__tokenpath, tokenmode)
-			return ENoError
+			return constants.ENoError
 		except Exception as ex:
 			perr("Exception occured while trying to store access token:\n{}".format(
 				formatex(ex)))
@@ -1792,10 +1789,10 @@ Possible fixes:
 			(url, retry, msg) = auth
 			pr(msg)
 			result = self.__get(url, pars, self.__server_auth_act, retry = retry, addtoken = False)
-			if result == ENoError:
+			if result == constants.ENoError:
 				break
 
-		if result == ENoError:
+		if result == constants.ENoError:
 			pr("Successfully authorized")
 		else:
 			perr("Fatal: All server authorizations failed.")
@@ -1862,10 +1859,10 @@ Possible fixes:
 				(url, retry, msg) = refresh
 				pr(msg)
 				result = self.__get(url, pars, self.__refresh_token_act, retry = retry, addtoken = False)
-				if result == ENoError:
+				if result == constants.ENoError:
 					break
 
-			if result == ENoError:
+			if result == constants.ENoError:
 				pr("Token successfully refreshed")
 			else:
 				perr("Token-refreshing on all the servers failed")
@@ -1893,7 +1890,7 @@ Possible fixes:
 		j = r.json()
 		pr('Quota: ' + human_size(j['quota']))
 		pr('Used: ' + human_size(j['used']))
-		return ENoError
+		return constants.ENoError
 
 	def help(self, command): # this comes first to make it easy to spot
 		''' Usage: help <command> - provide some information for the command '''
@@ -1937,7 +1934,7 @@ Possible fixes:
 	def __verify_current_file(self, j, gotlmd5):
 		# if we really don't want to verify
 		if self.__current_file == '/dev/null' and not self.__verify:
-			return ENoError
+			return constants.ENoError
 
 		rsize = 0
 		rmd5 = 0
@@ -1977,12 +1974,12 @@ Possible fixes:
 
 				if self.__current_file_md5 == rmd5:
 					self.pd("Local file and remote file hashes match")
-					return ENoError
+					return constants.ENoError
 				else:
 					pinfo("Local file and remote file hashes DON'T match")
 					return EHashMismatch
 			else:
-				return ENoError
+				return constants.ENoError
 		else:
 			pinfo("Local file and remote file sizes DON'T match")
 			return EHashMismatch
@@ -1997,7 +1994,7 @@ Possible fixes:
 				if f['path'] == remotefile: # case-sensitive
 					self.__remote_json = f
 					self.pd("File info json: {}".format(self.__remote_json))
-					return ENoError;
+					return constants.ENoError;
 
 			return EFileNotFound
 		except KeyError as ex:
@@ -2021,7 +2018,7 @@ Possible fixes:
 			rj['size'] = 0
 			self.__remote_json = rj
 			self.pd("File info json: {}".format(self.__remote_json))
-			return ENoError
+			return constants.ENoError
 
 		rdir, rfile = posixpath.split(remotefile)
 		self.pd("__get_file_info(): rdir : {} | rfile: {}".format(rdir, rfile))
@@ -2035,7 +2032,7 @@ Possible fixes:
 			return self.__get(pcsurl + 'file', pars, self.__get_file_info_act, remotefile, **kwargs)
 		else:
 			perr("Invalid remotefile '{}' specified.".format(remotefile))
-			return EArgument
+			return constants.EArgument
 
 	def get_file_info(self, remotefile = '/'):
 		rpath = get_pcs_path(remotefile)
@@ -2048,7 +2045,7 @@ Possible fixes:
 		for f in j['list']:
 			pr(self.__replace_list_format(fmt, f))
 
-		return ENoError
+		return constants.ENoError
 
 	def ls(self, remotepath = '',
 		fmt = '$t $f $s $m $d',
@@ -2117,7 +2114,7 @@ get information of the given path (dir / file) at Baidu Yun.
 
 	def __combine_file_act(self, r, args):
 		result = self.__verify_current_file(r.json(), False)
-		if result == ENoError:
+		if result == constants.ENoError:
 			self.pv("'{}' =C=> '{}' OK.".format(self.__current_file, args))
 		else:
 			perr("'{}' =C=> '{}' FAILED.".format(self.__current_file, args))
@@ -2154,7 +2151,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		if self.__current_slice_md5 == rsmd5:
 			self.__slice_md5s.append(rsmd5)
 			self.pv("'{}' >>==> '{}' OK.".format(self.__current_file, args))
-			return ENoError
+			return constants.ENoError
 		else:
 			perr("'{}' >>==> '{}' FAILED.".format(self.__current_file, args))
 			return EHashMismatch
@@ -2196,7 +2193,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		self.pd("Slice size: {}, Pieces: {}".format(slice, pieces))
 
 		i = 0
-		ec = ENoError
+		ec = constants.ENoError
 
 		fullpath = os.path.abspath(self.__current_file)
 		progress = {}
@@ -2242,7 +2239,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				j = 0
 				while True:
 					ec = self.__upload_slice(remotepath)
-					if ec == ENoError:
+					if ec == constants.ENoError:
 						self.pd("Slice MD5 match, continuing next slice")
 						pprgr(f.tell(), self.__current_file_size, start_time, initial_offset)
 						self.__update_progress_entry(fullpath)
@@ -2256,17 +2253,17 @@ get information of the given path (dir / file) at Baidu Yun.
 					else:
 						self.__slice_md5s = []
 						break
-				if ec != ENoError:
+				if ec != constants.ENoError:
 					break
 				i += 1
 
-		if ec != ENoError:
+		if ec != constants.ENoError:
 			return ec
 		else:
 			#self.pd("Sleep 2 seconds before combining, just to be safer.")
 			#time.sleep(2)
 			ec = self.__combine_file(remotepath, ondup = 'overwrite')
-			if ec == ENoError or ec == IESuperfileCreationFailed:
+			if ec == constants.ENoError or ec == IESuperfileCreationFailed:
 				# we delete the upload progress entry also when we can't combine
 				# the file, as it might be caused by  the slices uploaded
 				# has expired / become invalid
@@ -2279,7 +2276,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			time.sleep(1)
 			return self.__verify_current_file(r.json(), True)
 		else:
-			return ENoError
+			return constants.ENoError
 
 	def __rapidupload_file_post(self, rpath, size, md5str, slicemd5str, crcstr, ondup = 'overwrite'):
 		pars = {
@@ -2315,7 +2312,7 @@ get information of the given path (dir / file) at Baidu Yun.
 
 	def __upload_one_file_act(self, r, args):
 		result = self.__verify_current_file(r.json(), False)
-		if result == ENoError:
+		if result == constants.ENoError:
 			self.pv("'{}' ==> '{}' OK.".format(self.__current_file, args))
 		else:
 			perr("'{}' ==> '{}' FAILED.".format(self.__current_file, args))
@@ -2358,7 +2355,7 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		rdir = (remotepath + '/' + rdir).rstrip('/') # '/' bites
 
-		result = ENoError
+		result = constants.ENoError
 		for name in filenames:
 			#lfile = os.path.join(dirpath, name)
 			lfile = joinpath(dirpath, name)
@@ -2370,9 +2367,9 @@ get information of the given path (dir / file) at Baidu Yun.
 			self.__isrev = False
 			self.__remote_json = {}
 			subresult = self.__get_file_info(rfile, dumpex = False)
-			if subresult == ENoError: # same-name remote file exists
+			if subresult == constants.ENoError: # same-name remote file exists
 				self.__isrev = True
-				if ENoError == self.__verify_current_file(self.__remote_json, False):
+				if constants.ENoError == self.__verify_current_file(self.__remote_json, False):
 					# the two files are the same
 					upload = False
 					self.pv("Remote file '{}' already exists, skip uploading".format(rfile))
@@ -2384,7 +2381,7 @@ get information of the given path (dir / file) at Baidu Yun.
 
 			if upload:
 				fileresult = self.__upload_file(lfile, rfile, ondup)
-				if fileresult != ENoError:
+				if fileresult != constants.ENoError:
 					result = fileresult # we still continue
 			else:
 				pinfo("Remote file '{}' exists and is the same, skip uploading".format(rfile))
@@ -2393,7 +2390,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		return result
 
 	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite'):
-		result = ENoError
+		result = constants.ENoError
 		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
 		# it's so minor that we don't care about the return value
 		#self.__mkdir(remotepath, retry = False, dumpex = False)
@@ -2401,7 +2398,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		for walk in self.__walk_normal_file(localpath):
 			thisresult = self.__walk_upload(localpath, remotepath, ondup, walk)
 			# we continue even if some upload failed, but keep the last error code
-			if thisresult != ENoError:
+			if thisresult != constants.ENoError:
 				result = thisresult
 
 		return result
@@ -2410,16 +2407,16 @@ get information of the given path (dir / file) at Baidu Yun.
 		# TODO: this is a quick patch
 		if not self.__shallinclude(localpath, remotepath, True):
 			# since we are not going to upload it, there is no error
-			return ENoError
+			return constants.ENoError
 
 		self.__current_file = localpath
 		self.__current_file_size = getfilesize(localpath)
 
-		result = ENoError
+		result = constants.ENoError
 		if self.__current_file_size > MinRapidUploadFileSize:
 			self.pd("'{}' is being RapidUploaded.".format(self.__current_file))
 			result = self.__rapidupload_file(localpath, remotepath, ondup)
-			if result == ENoError:
+			if result == constants.ENoError:
 				self.pv("RapidUpload: '{}' =R=> '{}' OK.".format(localpath, remotepath))
 				self.__rapiduploaded = True
 			else:
@@ -2478,7 +2475,7 @@ upload a file or directory (recursively)
 				rpath = get_pcs_path(rpath)
 				# avoid uploading a file and destroy a directory by accident
 				subresult = self.__get_file_info(rpath)
-				if subresult == ENoError: # remote path exists, check is dir or file
+				if subresult == constants.ENoError: # remote path exists, check is dir or file
 					if self.__remote_json['isdir']: # do this only for dir
 						rpath += '/' + lpathbase # rpath is guaranteed no '/' ended
 			self.pd("remote path is '{}'".format(rpath))
@@ -2520,7 +2517,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 					self.__slice_md5s.append(arg)
 		else:
 			perr("You MUST provide the MD5s hex strings through arguments or a file.")
-			return EArgument
+			return constants.EArgument
 
 		original_verify = self.__verify
 		if not localfile or localfile == '*' or localfile == '/dev/null':
@@ -2546,7 +2543,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 				#self.__remote_json['md5'] = self.__remote_json['block_list'].strip('[]"')
 				self.pd("self.__remote_json: {}".format(self.__remote_json))
 				parse_ok = True
-				return ENoError
+				return constants.ENoError
 
 		if not parse_ok:
 			self.__remote_json = {}
@@ -2580,12 +2577,12 @@ try to create a file at PCS by combining slices, having MD5s specified
 					#os.fsync(f.fileno())
 
 		# No exception above, then everything goes fine
-		result = ENoError
+		result = constants.ENoError
 		if self.__verify:
 			self.__current_file_size = getfilesize(self.__current_file)
 			result = self.__verify_current_file(self.__remote_json, False)
 
-		if result == ENoError:
+		if result == constants.ENoError:
 			self.pv("'{}' <== '{}' OK".format(self.__current_file, rfile))
 		else:
 			perr("'{}' <== '{}' FAILED".format(self.__current_file, rfile))
@@ -2610,7 +2607,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 				pos = f.tell()
 				pprgr(pos, rsize, start_time, existing = self.__existing_size)
 				if pos - offset == expectedBytes:
-					return ENoError
+					return constants.ENoError
 				else:
 					return EFileWrite
 
@@ -2632,7 +2629,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 		ret = subprocess.call(cmd, shell = True)
 		self.pd("aria2c exited with status: {}".format(ret))
 		# TODO: a finer map return codes to our internal errors
-		if ret != ENoError:
+		if ret != constants.ENoError:
 			ret == ERequestFailed
 		return ret
 
@@ -2677,7 +2674,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 			subresult = self.__get(dpcsurl + 'file', pars,
 				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers, cookies = self.__cookies)
-			if subresult != ENoError:
+			if subresult != constants.ENoError:
 				return subresult
 
 			if nextoffset < rsize:
@@ -2686,12 +2683,12 @@ try to create a file at PCS by combining slices, having MD5s specified
 				break
 
 		# No exception above, then everything goes fine
-		result = ENoError
+		result = constants.ENoError
 		if self.__verify:
 			self.__current_file_size = getfilesize(self.__current_file)
 			result = self.__verify_current_file(self.__remote_json, False)
 
-		if result == ENoError:
+		if result == constants.ENoError:
 			self.pv("'{}' <== '{}' OK".format(self.__current_file, rfile))
 		else:
 			perr("'{}' <== '{}' FAILED".format(self.__current_file, rfile))
@@ -2703,9 +2700,9 @@ try to create a file at PCS by combining slices, having MD5s specified
 		# TODO: this is a quick patch
 		if not self.__shallinclude(localfile, remotefile, False):
 			# since we are not going to download it, there is no error
-			return ENoError
+			return constants.ENoError
 
-		result = ENoError
+		result = constants.ENoError
 		rfile = remotefile
 
 		self.__remote_json = {}
@@ -2714,7 +2711,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 		#if self.__verify or self.__resumedownload:
 		self.pd("Getting info of remote file '{}' for later verification".format(rfile))
 		result = self.__get_file_info(rfile)
-		if result != ENoError:
+		if result != constants.ENoError:
 			return result
 
 		offset = 0
@@ -2722,14 +2719,14 @@ try to create a file at PCS by combining slices, having MD5s specified
 		if os.path.isfile(localfile):
 			self.pd("Same-name local file '{}' exists, checking if contents match".format(localfile))
 			self.__current_file_size = getfilesize(self.__current_file)
-			if ENoError == self.__verify_current_file(self.__remote_json, False):
+			if constants.ENoError == self.__verify_current_file(self.__remote_json, False):
 				self.pd("Same local file '{}' already exists, skip downloading".format(localfile))
-				return ENoError
+				return constants.ENoError
 			else:
 				if not self.shalloverwrite("Same-name locale file '{}' exists but is different, "
 						"do you want to overwrite it? [y/N]".format(localfile)):
 					pinfo("Same-name local file '{}' exists but is different, skip downloading".format(localfile))
-					return ENoError
+					return constants.ENoError
 
 			if self.__resumedownload and \
 				self.__compare_size(self.__current_file_size, self.__remote_json) == 2:
@@ -2741,11 +2738,11 @@ try to create a file at PCS by combining slices, having MD5s specified
 			if not self.shalloverwrite("Same-name directory '{}' exists, "
 				"do you want to remove it? [y/N]".format(localfile)):
 				pinfo("Same-name directory '{}' exists, skip downloading".format(localfile))
-				return ENoError
+				return constants.ENoError
 
 			self.pv("Directory with the same name '{}' exists, removing ...".format(localfile))
 			result = removedir(localfile, self.verbose)
-			if result == ENoError:
+			if result == constants.ENoError:
 				self.pv("Removed")
 			else:
 				perr("Error removing the directory '{}'".format(localfile))
@@ -2754,7 +2751,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 		ldir, file = os.path.split(localfile)
 		if ldir and not os.path.exists(ldir):
 			result = makedir(ldir, verbose = self.verbose)
-			if result != ENoError:
+			if result != constants.ENoError:
 				perr("Fail to make directory '{}'".format(ldir))
 				return result
 
@@ -2841,7 +2838,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 			else:
 				filejs.append(path)
 
-		return ENoError
+		return constants.ENoError
 
 	def __walk_remote_dir_recur(self, remotepath, proceed, remoterootpath, args = None, skip_remote_only_dirs = False):
 		pars = {
@@ -2856,9 +2853,9 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 		result = self.__get(pcsurl + 'file', pars, self.__walk_remote_dir_act, (dirjs, filejs))
 		self.pd("Remote dirs: {}".format(dirjs))
 		self.pd("Remote files: {}".format(filejs))
-		if result == ENoError:
+		if result == constants.ENoError:
 			subresult = proceed(remotepath, dirjs, filejs, args)
-			if subresult != ENoError:
+			if subresult != constants.ENoError:
 				self.pd("Error: {} while proceeding remote path'{}'".format(
 					subresult, remotepath))
 				result = subresult # we continue
@@ -2870,7 +2867,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 					continue
 
 				subresult = self.__walk_remote_dir_recur(crpath, proceed, remoterootpath, args, skip_remote_only_dirs)
-				if subresult != ENoError:
+				if subresult != constants.ENoError:
 					self.pd("Error: {} while sub-walking remote dirs'{}'".format(
 						subresult, dirjs))
 					result = subresult
@@ -2881,24 +2878,24 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 		return self.__walk_remote_dir_recur(remotepath, proceed, remotepath, args, skip_remote_only_dirs)
 
 	def __prepare_local_dir(self, localdir):
-		result = ENoError
+		result = constants.ENoError
 		if os.path.isfile(localdir):
 			result = removefile(localdir, self.verbose)
 
-		if result == ENoError:
+		if result == constants.ENoError:
 			if localdir and not os.path.exists(localdir):
 				result = makedir(localdir, verbose = self.verbose)
 
 		return result
 
 	def __proceed_downdir(self, remotepath, dirjs, filejs, args):
-		result = ENoError
+		result = constants.ENoError
 		rootrpath, localpath = args
 		rlen = len(remotepath) + 1 # '+ 1' for the trailing '/', it bites.
 		rootlen = len(rootrpath) + 1 # ditto
 
 		result = self.__prepare_local_dir(localpath)
-		if result != ENoError:
+		if result != constants.ENoError:
 			perr("Fail to create prepare local directory '{}' for downloading, ABORT".format(localpath))
 			return result
 
@@ -2907,7 +2904,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 			#ldir = os.path.join(localpath, reldir)
 			ldir = joinpath(localpath, reldir)
 			result = self.__prepare_local_dir(ldir)
-			if result != ENoError:
+			if result != constants.ENoError:
 				perr("Fail to create prepare local directory '{}' for downloading, ABORT".format(ldir))
 				return result
 
@@ -2943,7 +2940,7 @@ download a remote directory (recursively) / file
   localpath - local path. if not specified, it is set to the current directory
 		'''
 		subr = self.get_file_info(remotepath)
-		if ENoError == subr:
+		if constants.ENoError == subr:
 			if 'isdir' in self.__remote_json:
 				if self.__remote_json['isdir']:
 					return self.downdir(remotepath, localpath)
@@ -2965,14 +2962,14 @@ download a remote directory (recursively) / file
 			pr("path, ctime, mtime, fs_id")
 			pr("{path}, {ctime}, {mtime}, {fs_id}".format(**j))
 
-		return ENoError
+		return constants.ENoError
 
 	def __mkdir(self, rpath, **kwargs):
 		# TODO: this is a quick patch
 		# the code still works because Baidu Yun doesn't require
 		# parent directory to exist remotely to upload / create a file
 		if not self.__shallinclude('.', rpath, True):
-			return ENoError
+			return constants.ENoError
 
 		self.pd("Making remote directory '{}'".format(rpath))
 
@@ -3030,7 +3027,7 @@ move a file / dir remotely at Baidu Yun
 			to = list['to']
 			self.pd("Remote copy: '{}' =cc=> '{}' OK".format(fromp, to))
 
-		return ENoError
+		return constants.ENoError
 
 	# alias
 	def cp(self, fromp, to):
@@ -3058,7 +3055,7 @@ copy a file / dir remotely at Baidu Yun
 			pr("Deletion request '{}' OK".format(rid))
 			pr("Usage 'list' command to confirm")
 
-			return ENoError
+			return constants.ENoError
 		else:
 			perr("Deletion failed")
 			return EFailToDeleteFile
@@ -3072,12 +3069,12 @@ copy a file / dir remotely at Baidu Yun
 		return self.__post(pcsurl + 'file', pars, self.__delete_act)
 
 	def __delete_children_act(self, r, args):
-		result = ENoError
+		result = constants.ENoError
 		j = r.json()
 		for f in j['list']:
 			# we continue even if some upload failed, but keep the last error code
 			thisresult = self.__delete(f['path'])
-			if thisresult != ENoError:
+			if thisresult != constants.ENoError:
 				result = thisresult
 
 		return result
@@ -3109,7 +3106,7 @@ delete a file / dir remotely at Baidu Yun
 
 	def __search_act(self, r, args):
 		print_pcs_list(r.json())
-		return ENoError
+		return constants.ENoError
 
 	def search(self, keyword, remotepath = None, recursive = True):
 		''' Usage: search <keyword> [remotepath] [recursive] - \
@@ -3131,7 +3128,7 @@ search for a file using keyword at Baidu Yun
 
 	def __listrecycle_act(self, r, args):
 		print_pcs_list(r.json())
-		return ENoError
+		return constants.ENoError
 
 	def listrecycle(self, start = 0, limit = 1000):
 		''' Usage: listrecycle [start] [limit] - \
@@ -3150,7 +3147,7 @@ list the recycle contents
 	def __restore_act(self, r, args):
 		path = args
 		pr("'{}' found and restored".format(path))
-		return ENoError
+		return constants.ENoError
 
 	def __restore_search_act(self, r, args):
 		path = args
@@ -3203,7 +3200,7 @@ restore a file from the recycle bin
 		for file in files:
 			place.add(file[0], PathDictTree('F', size = file[1], md5 = file[2]))
 
-		return ENoError
+		return constants.ENoError
 
 	def __gather_local_dir(self, dir):
 		self.__local_dir_contents = PathDictTree()
@@ -3226,7 +3223,7 @@ restore a file from the recycle bin
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
 				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = f['md5']))
 
-		return ENoError
+		return constants.ENoError
 
 	def __gather_remote_dir(self, rdir, skip_remote_only_dirs = False):
 		self.__remote_dir_contents = PathDictTree()
@@ -3325,7 +3322,7 @@ directory is much larger than the local one). it defaults to False.
 		self.result['local'] = local
 		self.result['remote'] = remote
 
-		return ENoError
+		return constants.ENoError
 
 	def syncdown(self, remotedir = '', localdir = '', deletelocal = False):
 		''' Usage: syncdown [remotedir] [localdir] [deletelocal] - \
@@ -3335,7 +3332,7 @@ if not specified, it defaults to the root directory
   localdir - the local directory to sync to if not specified, it defaults to the current directory.
   deletelocal - delete local files that are not inside Baidu Yun directory, default is False
 		'''
-		result = ENoError
+		result = constants.ENoError
 		rpath = get_pcs_path(remotedir)
 		same, diff, local, remote = self.__compare(rpath, localdir)
 		# clear the way
@@ -3348,12 +3345,12 @@ if not specified, it defaults to the root directory
 			if t == 'DF':
 				result = removedir(lcpath, self.verbose)
 				subresult = self.__downfile(rcpath, lcpath)
-				if subresult != ENoError:
+				if subresult != constants.ENoError:
 					result = subresult
 			elif t == 'FD':
 				result = removefile(lcpath, self.verbose)
 				subresult = makedir(lcpath, verbose = self.verbose)
-				if subresult != ENoError:
+				if subresult != constants.ENoError:
 					result = subresult
 			else: # " t == 'F' " must be true
 				result = self.__downfile(rcpath, lcpath)
@@ -3366,11 +3363,11 @@ if not specified, it defaults to the root directory
 			rcpath = rpath + '/' + p # remote complete path
 			if t == 'F':
 				subresult = self.__downfile(rcpath, lcpath)
-				if subresult != ENoError:
+				if subresult != constants.ENoError:
 					result = subresult
 			else: # " t == 'D' " must be true
 				subresult = makedir(lcpath, verbose = self.verbose)
-				if subresult != ENoError:
+				if subresult != constants.ENoError:
 					result = subresult
 
 		if str2bool(deletelocal):
@@ -3381,11 +3378,11 @@ if not specified, it defaults to the root directory
 				p = joinpath(localdir, l[1])
 				if os.path.isfile(p):
 					subresult = removefile(p, self.verbose)
-					if subresult != ENoError:
+					if subresult != constants.ENoError:
 						result = subresult
 				elif os.path.isdir(p):
 					subresult = removedir(p, self.verbose)
-					if subresult != ENoError:
+					if subresult != constants.ENoError:
 						result = subresult
 
 		return result
@@ -3398,7 +3395,7 @@ sync up from the local directory to the remote directory
 if not specified, it defaults to the root directory
   deleteremote - delete remote files that are not inside the local directory, default is False
 		'''
-		result = ENoError
+		result = constants.ENoError
 		rpath = get_pcs_path(remotedir)
 		#rpartialdir = remotedir.rstrip('/ ')
 		same, diff, local, remote = self.__compare(rpath, localdir, True)
@@ -3420,11 +3417,11 @@ if not specified, it defaults to the root directory
 #					self.__isrev = False
 				if t == 'F' or t == 'FD':
 					subresult = self.__upload_file(lcpath, rcpath)
-					if subresult != ENoError:
+					if subresult != constants.ENoError:
 						result = subresult
 				else: # " t == 'DF' " must be true
 					subresult = self.__mkdir(rcpath)
-					if subresult != ENoError:
+					if subresult != constants.ENoError:
 						result = subresult
 			else:
 				pinfo("Uploading '{}' skipped".format(lcpath))
@@ -3439,11 +3436,11 @@ if not specified, it defaults to the root directory
 			self.__isrev = False
 			if t == 'F':
 				subresult = self.__upload_file(lcpath, rcpath)
-				if subresult != ENoError:
+				if subresult != constants.ENoError:
 					result = subresult
 			else: # " t == 'D' " must be true
 				subresult = self.__mkdir(rcpath)
-				if subresult != ENoError:
+				if subresult != constants.ENoError:
 					result = subresult
 
 		if str2bool(deleteremote):
@@ -3456,7 +3453,7 @@ if not specified, it defaults to the root directory
 				if 0 != p.find(pp): # another path
 					#subresult = self.delete(p)
 					subresult = self.__delete(p)
-					if subresult != ENoError:
+					if subresult != constants.ENoError:
 						result = subresult
 				pp = p
 
@@ -3467,7 +3464,7 @@ if not specified, it defaults to the root directory
 		if cached.cacheloaded:
 			#pprint.pprint(cached.cache)
 			MyPrettyPrinter().pprint(cached.cache)
-			return ENoError
+			return constants.ENoError
 		else:
 			perr("Cache not loaded.")
 			return ECacheNotLoaded
@@ -3482,16 +3479,16 @@ if not specified, it defaults to the root directory
 				self.pd("Hash Cache file '{}' backed up as '{}".format(
 					self.__hashcachepath, backup))
 				cached.cleancache()
-				return ENoError
+				return constants.ENoError
 			except Exception as ex:
 				perr(formatex(ex))
-				return EException
+				return constants.EException
 		else:
 			return EFileNotFound
 
 	def __cdl_act(self, r, args):
 		pr(pprint.pformat(r.json()))
-		return ENoError
+		return constants.ENoError
 
 	def __prepare_cdl_add(self, source_url, rpath, timeout):
 		pr("Adding cloud download task:")
@@ -3511,7 +3508,7 @@ if not specified, it defaults to the root directory
 		rpath = get_pcs_path(save_path)
 		# download to /apps/bypy root
 		if rpath == AppPcsPath \
-			or (ENoError == self.__get_file_info(rpath) \
+			or (constants.ENoError == self.__get_file_info(rpath) \
 				and self.__remote_json['isdir']):
 			filename = source_url.split('/')[-1]
 			rpath += '/' + filename
@@ -3559,7 +3556,7 @@ if not specified, it defaults to the root directory
 				pprgr(finish, total, start_time)
 				if done[0]:
 					pr(pprint.pformat(j))
-			return ENoError
+			return constants.ENoError
 		except Exception as ex:
 			perr("Exception while monitoring offline (cloud) download task:\n{}".format(formatex(ex)))
 			perr("Baidu returned:\n{}".format(rb(r.text)))
@@ -3569,7 +3566,7 @@ if not specified, it defaults to the root directory
 		try:
 			args[0] = r.json()
 			pr(pprint.pformat(args[0]))
-			return ENoError
+			return constants.ENoError
 		except Exception as ex:
 			perr("Exception while adding offline (cloud) download task:\n{}".format(formatex(ex)))
 			perr("Baidu returned:\n{}".format(rb(r.text)))
@@ -3579,14 +3576,14 @@ if not specified, it defaults to the root directory
 		pr("Cancelling offline (cloud) download task: {}".format(self.__cdl_task_id))
 		result = self.__cdl_cancel(self.__cdl_task_id)
 		pr("Result: {}".format(result))
-		onexit(EAbort)
+		onexit(constants.EAbort)
 
 	def __cdl_addmon(self, source_url, rpath, timeout = 3600):
 		pars = self.__prepare_cdl_add(source_url, rpath, timeout)
 		jc = [{}] # out param
 		result = self.__post(pcsurl + 'services/cloud_dl',
 			pars, self.__cdl_addmon_act, jc)
-		if result == ENoError:
+		if result == constants.ENoError:
 			if not 'task_id' in jc[0]:
 				return EInvalidJson
 			task_id = jc[0]['task_id']
@@ -3603,16 +3600,16 @@ if not specified, it defaults to the root directory
 					result = self.__post(
 						pcsurl + 'services/cloud_dl', pars, self.__cdl_mon_act,
 						(task_id, start_time, done))
-					if result == ENoError:
+					if result == constants.ENoError:
 						if done[0] == True:
-							return ENoError
+							return constants.ENoError
 					else:
 						return result
 					time.sleep(5)
 			except KeyboardInterrupt:
 				pr("Canceling offline (cloud) downloa task: {}".format(task_id))
 				self.__cdl_cancel(task_id)
-				return EAbort
+				return constants.EAbort
 		else:
 			return result
 
@@ -3668,11 +3665,11 @@ if not specified, it defaults to the root directory
 		if fast:
 			self.__get_hashes_for_rapidupload(lpath, setlocalfile = True)
 			pr(self.__get_accept_cmd(rpath))
-			return ENoError
+			return constants.ENoError
 
 		ulrpath = RemoteTempDir + '/' + posixpath.basename(lpath)
 		result = self.__upload_file(lpath, ulrpath)
-		if result != ENoError:
+		if result != constants.ENoError:
 			perr("Unable to share as uploading failed")
 			return result
 
@@ -3681,15 +3678,15 @@ if not specified, it defaults to the root directory
 			while i < ShareRapidUploadRetries:
 				i += 1
 				result = self.__rapidupload_file(lpath, ulrpath, setlocalfile = True)
-				if result == ENoError: # or result == IEMD5NotFound: # retrying if MD5 not found _may_ make the file available?
+				if result == constants.ENoError: # or result == IEMD5NotFound: # retrying if MD5 not found _may_ make the file available?
 					break;
 				else:
 					self.pd("Retrying #{} for sharing '{}'".format(i, lpath))
 					time.sleep(1)
 
-		if result == ENoError:
+		if result == constants.ENoError:
 			pr(self.__get_accept_cmd(rpath))
-			return ENoError
+			return constants.ENoError
 		elif result == IEMD5NotFound:
 			pr("# Sharing (RapidUpload) not possible for '{}', error: {}".format(lpath, result))
 			return result
@@ -3698,7 +3695,7 @@ if not specified, it defaults to the root directory
 			return result
 
 	def __share_local_dir(self, lpath, rpath, fast):
-		result = ENoError
+		result = constants.ENoError
 		for walk in self.__walk_normal_file(lpath):
 			(dirpath, dirnames, filenames) = walk
 			for filename in filenames:
@@ -3709,7 +3706,7 @@ if not specified, it defaults to the root directory
 					joinpath(dirpath, filename),
 					posixpath.join(rpath, rpart, filename),
 					fast)
-				if subr != ENoError:
+				if subr != constants.ENoError:
 					result = subr
 		return result
 
@@ -3721,7 +3718,7 @@ if not specified, it defaults to the root directory
 
 		# need to check existence of the remote temp dir
 		fir = self.__get_file_info(RemoteTempDir)
-		if fir == ENoError: # path exists
+		if fir == constants.ENoError: # path exists
 			msg = '''
 In order to use this functionality, we need to use a temporary directory '{}' \
 at Baidu Cloud Storage. However, this remote path exists already.
@@ -3778,7 +3775,7 @@ y/N/a (yes/NO/always)?
 		rdir, rfile = posixpath.split(rpath)
 		lpath = joinpath(tmpdir, rfile)
 		subr = self.__downfile(rpath, lpath)
-		if subr != ENoError:
+		if subr != constants.ENoError:
 			perr("Fatal: Error {} while downloading remote file '{}'".format(subr, rpath))
 			return subr
 
@@ -3786,11 +3783,11 @@ y/N/a (yes/NO/always)?
 
 	def __proceed_share_remote(self, rpath, dirjs, filejs, args):
 		remoterootlen, tmpdir, srpath, fast = args
-		result = ENoError
+		result = constants.ENoError
 		for filej in filejs:
 			rfile = filej['path']
 			subr = self.__share_remote_file(tmpdir, rfile, joinpath(srpath, rfile[remoterootlen:], sep = '/'), fast)
-			if subr != ENoError:
+			if subr != constants.ENoError:
 				result = subr
 		return result
 
@@ -3799,7 +3796,7 @@ y/N/a (yes/NO/always)?
 
 	def __share_remote(self, tmpdir, rpath, srpath, fast): # srpath - share remote path (full path)
 		subr = self.__get_file_info(rpath)
-		if ENoError == subr:
+		if constants.ENoError == subr:
 			if 'isdir' in self.__remote_json:
 				if self.__remote_json['isdir']:
 					return self.__share_remote_dir(tmpdir, rpath, srpath, fast)
@@ -3847,7 +3844,7 @@ y/N/a (yes/NO/always)?
 		self.__verify = False
 		result = self.__rapidupload_file_post(rpath, size, md5str, slicemd5str, crcstr)
 		self.__verify = verify
-		if result == ENoError:
+		if result == constants.ENoError:
 			self.pv("Accepted: {}".format(rpath))
 		else:
 			perr("Unable to accept: {}, Error: {}".format(rpath, result))
@@ -3920,7 +3917,7 @@ class PanAPI(ByPy):
 			elif 'list' in j:
 				for e in j['list']:
 					pr("{}\t{}\t{}".format(ls_type(e['isdir'] == 1), e['file_name'], e['size']))
-		return ENoError
+		return constants.ENoError
 
 	def __panapi_unzip_file(self, rpath, subpath, start, limit):
 		pars = {
@@ -3946,12 +3943,12 @@ class PanAPI(ByPy):
 		self.pd("UnzipCopy response: {}".format(j))
 		if 'path' in j:
 			self.pv("Remote extract: '{}#{}' =xx=> '{}' OK.".format(args['path'], args['subpath'], j['path']))
-			return ENoError
+			return constants.ENoError
 		elif 'error_code' in j:
 			if j['error_code'] == 31196:
 				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. File already exists.".format(args['path'], args['subpath'], args['topath']))
 				subresult = self.__delete(args['topath'])
-				if subresult == ENoError:
+				if subresult == constants.ENoError:
 					return self.__panapi_unzipcopy_file(args['path'], args['subpath'], args['topath'])
 				else:
 					return ERequestFailed
@@ -3990,14 +3987,14 @@ class PanAPI(ByPy):
 			if 'list' in j:
 				for e in j['list']:
 					pr("{}\t{}\t{}".format(e['revision'], e['size'], ls_time(e['revision'] // 1e6)))
-			return ENoError
+			return constants.ENoError
 		if j['errno'] == -6: # invalid BDUSS
 			pr("BDUSS has expired.")
 			return PanAPI.IEBDUSSExpired
 		if j['errno'] == -9:
 			pr("File '{}' not exists.".format(args['path']))
 			return EFileNotFound
-		return ENoError
+		return constants.ENoError
 
 	def __panapi_revision_list(self, rpath):
 		pars = {
@@ -4021,7 +4018,7 @@ class PanAPI(ByPy):
 		self.pd("RevisionRevert response: {}".format(j))
 		if j['errno'] == 0:
 			self.pv("Remote revert: '{}#{}' =rr=> '{}' OK.".format(args['path'], args['revision'], j['path']))
-			return ENoError
+			return constants.ENoError
 		if j['errno'] == -6: # invalid BDUSS
 			pr("BDUSS has expired.")
 			return PanAPI.IEBDUSSExpired
@@ -4031,7 +4028,7 @@ class PanAPI(ByPy):
 		if j['errno'] == 10:
 			pr("Reverting '{}' in process...".format(args['path']))
 			return ERequestFailed
-		return ENoError
+		return constants.ENoError
 
 	def __panapi_revision_revert(self, rpath, revision, dir = None):
 		if not dir:
@@ -4047,7 +4044,7 @@ class PanAPI(ByPy):
 						   {}, self.__panapi_revision_revert_act, pars, data = pars, cookies = self.__cookies )
 
 # TODO: Make it a method of ByPy and save settings here?
-def onexit(retcode = ENoError):
+def onexit(retcode = constants.ENoError):
 	# saving is the most important
 	# we save, but don't clean, why?
 	# think about unmount path, moved files,
@@ -4063,7 +4060,7 @@ def onexit(retcode = ENoError):
 
 def sighandler(signum, frame):
 	pr("Signal {} received, Abort".format(signum))
-	onexit(EAbort)
+	onexit(constants.EAbort)
 
 # http://www.gnu.org/software/libc/manual/html_node/Basic-Signal-Handling.html
 def setsighandler(signum, handler):
@@ -4168,7 +4165,7 @@ def getparser():
 
 def clean_prog_files(cleanlevel, verbose, tokenpath = config.TokenFilePath):
 	result = removefile(tokenpath, verbose)
-	if result == ENoError:
+	if result == constants.ENoError:
 		pr("Token file '{}' removed. You need to re-authorize "
 		   "the application upon next run".format(tokenpath))
 	else:
@@ -4177,7 +4174,7 @@ def clean_prog_files(cleanlevel, verbose, tokenpath = config.TokenFilePath):
 
 	if cleanlevel >= 2:
 		subresult = os.remove(cached.hashcachepath)
-		if subresult == ENoError:
+		if subresult == constants.ENoError:
 			pr("Hash Cache File '{}' removed.".format(cached.hashcachepath))
 		else:
 			perr("Failed to remove the Hash Cache File '{}'".format(cached.hashcachepath))
@@ -4190,7 +4187,7 @@ def main(argv=None): # IGNORE:C0111
 	''' Main Entry '''
 
 	try:
-		result = ENoError
+		result = constants.ENoError
 		if argv is None:
 			argv = sys.argv
 		else:
@@ -4225,18 +4222,18 @@ def main(argv=None): # IGNORE:C0111
 			slice_size = interpret_size(args.slice)
 		except (ValueError, KeyError):
 			pr("Error: Invalid slice size specified '{}'".format(args.slice))
-			return EArgument
+			return constants.EArgument
 
 		try:
 			chunk_size = interpret_size(args.chunk)
 		except (ValueError, KeyError):
 			pr("Error: Invalid slice size specified '{}'".format(args.slice))
-			return EArgument
+			return constants.EArgument
 
 		if len(args.command) <= 0 or \
 			(len(args.command) == 1 and args.command[0].lower() == 'help'):
 			parser.print_help()
-			return EArgument
+			return constants.EArgument
 		elif args.command[0] in ByPy.__dict__: # dir(ByPy), dir(by)
 			timeout = None
 			if args.timeout:
