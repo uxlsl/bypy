@@ -3,7 +3,30 @@
 import os
 import sys
 import time
+import shutil
 import config
+import traceback
+from constants import (
+        ENoError,
+        EFailToCreateLocalFile,
+        EFailToDeleteFile,
+        EFailToDeleteDir,
+)
+from human import (
+        human_size,
+        human_time_short,
+        human_speed,
+)
+
+
+# http://stackoverflow.com/questions/9403986/python-3-traceback-fails-when-no-exception-is-active
+def formatex(ex):
+	s = ''
+	if ex and isinstance(ex, Exception):
+		s = "Exception:\n{} - {}\nStack:\n{}".format(
+			type(ex), ex, ''.join(traceback.format_stack()))
+
+	return s
 
 
 def iswindows():
@@ -92,9 +115,6 @@ def bannerwarn(msg):
 	print('!' * 160)
 
 
-def iswindows():
-	return os.name == 'nt'
-
 def askc(msg, enter = True):
 	pr(msg)
 	if enter:
@@ -137,4 +157,92 @@ def pprgrc(finish, total, start_time = None, existing = 0,
 
 pprgr = pprgrc
 
+# guarantee no-exception
+def copyfile(src, dst):
+	result = ENoError
+	try:
+		shutil.copyfile(src, dst)
+	except (shutil.Error, IOError) as ex:
+		perr("Fail to copy '{}' to '{}'.\n{}".format(
+			src, dst, formatex(ex)))
+		result = EFailToCreateLocalFile
+
+	return result
+
+def movefile(src, dst):
+	result = ENoError
+	try:
+		shutil.move(src, dst)
+	except (shutil.Error, OSError) as ex:
+		perr("Fail to move '{}' to '{}'.\n{}".format(
+			src, dst, formatex(ex)))
+		result = EFailToCreateLocalFile
+
+	return result
+
+def removefile(path, verbose = False):
+	result = ENoError
+	try:
+		if verbose:
+			pr("Removing local file '{}'".format(path))
+		if path:
+			os.remove(path)
+	except Exception as ex:
+		perr("Fail to remove local fle '{}'.\n{}".format(
+			path, formatex(ex)))
+		result = EFailToDeleteFile
+
+	return result
+
+def removedir(path, verbose = False):
+	result = ENoError
+	try:
+		if verbose:
+			pr("Removing local directory '{}'".format(path))
+		if path:
+			shutil.rmtree(path)
+	except Exception as ex:
+		perr("Fail to remove local directory '{}'.\n{}".format(
+			path, formatex(ex)))
+		result = EFailToDeleteDir
+
+	return result
+
+def makedir(path, mode = 0o777, verbose = False):
+	result = ENoError
+
+	if verbose:
+		pr("Creating local directory '{}'".format(path))
+
+	if path and not os.path.exists(path):
+		try:
+			os.makedirs(path, mode)
+		except os.error as ex:
+			perr("Failed at creating local dir '{}'.\n{}".format(
+				path, formatex(ex)))
+			result = EFailToCreateLocalDir
+
+	return result
+
+# guarantee no-exception
+def getfilesize(path):
+	size = -1
+	try:
+		size = os.path.getsize(path)
+	except os.error as ex:
+		perr("Exception occured while getting size of '{}'.\n{}".format(
+			path, formatex(ex)))
+
+	return size
+
+# guarantee no-exception
+def getfilemtime(path):
+	mtime = -1
+	try:
+		mtime = os.path.getmtime(path)
+	except os.error as ex:
+		perr("Exception occured while getting modification time of '{}'.\n{}".format(
+			path, formatex(ex)))
+
+	return mtime
 

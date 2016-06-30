@@ -55,7 +55,6 @@ import time
 import shutil
 import tempfile
 import posixpath
-import traceback
 import inspect
 import logging
 from functools import partial
@@ -84,8 +83,6 @@ import binascii
 import re
 import pprint
 import socket
-import math
-#from collections import OrderedDict
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import subprocess
@@ -98,71 +95,73 @@ except:
 	except:
 		print("Something seems wrong with the urllib3 installation.\nQuitting")
 		sys.exit(EFatal)
-
 from config import (
-		OneM,
-		OneK,
-		AuthServerList,
-		ApiKey,
-		SecretKey,
-		SIPrefixTimes,
-		AppPcsPath,
-		PcsDomain,
-		PcsUrl,
-		CPcsUrl,
-		DPcsUrl,
-		PicklePath,
-		ByPyCertsFileName,
-		CaCertsOption,
-		CacheSavePeriodInSec,
-		SIPrefixNames,
-		TokenUrl,
-		DisableSslCheckOption,
-		CleanOptionShort,
-		ProgressPath,
-		DeviceAuthUrl,
-		MaxSlicePieces,
-		RetryDelayInSec,
-		MinRapidUploadFileSize,
-		MaxSliceSize,
-		UserAgent,
-		AppPcsPathLen,
-		RemoteTempDir,
-		ShareRapidUploadRetries,
-		SettingKey_OverwriteRemoteTempDir,
-		HashCachePath,
-		OldTokenFilePath,
-		TokenFilePath,
-		OldPicklePath,
-		ConfigDir,
-		DefaultDlChunkSize,
-		DefaultSliceSize,
-		TokenFileName,
-		SettingFileName,
-		HashCacheFileName,
-		RestApiPath,
-		ServerAuthUrl,
-		DefaultSliceInMB,
-		CleanOptionLong,
-		last_cache_save
-	)
+        OneM,
+        OneK,
+        AuthServerList,
+        ApiKey,
+        SecretKey,
+        SIPrefixTimes,
+        AppPcsPath,
+        PcsDomain,
+        PcsUrl,
+        CPcsUrl,
+        DPcsUrl,
+        PicklePath,
+        ByPyCertsFileName,
+        CaCertsOption,
+        CacheSavePeriodInSec,
+        SIPrefixNames,
+        TokenUrl,
+        DisableSslCheckOption,
+        CleanOptionShort,
+        ProgressPath,
+        DeviceAuthUrl,
+        MaxSlicePieces,
+        RetryDelayInSec,
+        MinRapidUploadFileSize,
+        MaxSliceSize,
+        UserAgent,
+        AppPcsPathLen,
+        RemoteTempDir,
+        ShareRapidUploadRetries,
+        SettingKey_OverwriteRemoteTempDir,
+        HashCachePath,
+        OldTokenFilePath,
+        TokenFilePath,
+        OldPicklePath,
+        ConfigDir,
+        DefaultDlChunkSize,
+        DefaultSliceSize,
+        TokenFileName,
+        SettingFileName,
+        HashCacheFileName,
+        RestApiPath,
+        ServerAuthUrl,
+        DefaultSliceInMB,
+        CleanOptionLong,
+        last_cache_save
+        )
 from utils import (
-		pdbg,
-		perr,
-		pinfo,
-		pr,
-		pwarn,
-		bannerwarn,
-		iswindows,
-		ask,
-		askc,
-		pprgrc,
-		pprgr,
-		)
+        formatex,
+        pdbg,
+        perr,
+        pinfo,
+        pr,
+        pwarn,
+        bannerwarn,
+        iswindows,
+        ask,
+        pprgr,
+        getfilesize,
+        makedir,
+        getfilemtime,
+        )
+from human import (
+	interpret_size
+)
 from constants import (
 		ENoError,
-		EIncorrectPythonVersion,
-#EApiNotConfigured ,
 		EArgument,
 		EAbort,
 		EException,
@@ -171,9 +170,6 @@ from constants import (
 		EHashMismatch,
 		EFileWrite,
 		EFileTooBig,
-		EFailToCreateLocalDir,
-		EFailToCreateLocalFile,
-		EFailToDeleteDir,
 		EFailToDeleteFile,
 		EFileNotFound,
 		EMaxRetry,
@@ -264,15 +260,6 @@ def remove_backslash(s):
 
 rb = remove_backslash
 
-# http://stackoverflow.com/questions/9403986/python-3-traceback-fails-when-no-exception-is-active
-def formatex(ex):
-	s = ''
-	if ex and isinstance(ex, Exception):
-		s = "Exception:\n{} - {}\nStack:\n{}".format(
-			type(ex), ex, ''.join(traceback.format_stack()))
-
-	return s
-
 # marshaling
 def str2bool(s):
 	if isinstance(s, basestring):
@@ -302,128 +289,6 @@ def str2float(s):
 		# don't change
 		return s
 
-def human_time(seconds):
-	''' DocTests:
-	>>> human_time(0) == ''
-	True
-	>>> human_time(122.1) == '2m2s'
-	True
-	>>> human_time(133) == '2m13s'
-	True
-	>>> human_time(12345678) == '20W2D21h21m18s'
-	True
-	'''
-	isec = int(seconds)
-	s = isec % 60
-	m = isec // 60 % 60
-	h = isec // 60 // 60 % 24
-	d = isec // 60 // 60 // 24 % 7
-	w = isec // 60 // 60 // 24 // 7
-
-	result = ''
-	for t in [ ('W', w), ('D', d), ('h', h), ('m', m), ('s', s) ]:
-		if t[1]:
-			result += str(t[1]) + t[0]
-
-	return result
-
-def limit_unit(timestr, num = 2):
-	''' DocTests:
-	>>> limit_unit('1m2s', 1) == '1m'
-	True
-	>>> limit_unit('1m2s') == '1m2s'
-	True
-	>>> limit_unit('1m2s', 4) == '1m2s'
-	True
-	>>> limit_unit('1d2h3m2s') == '1d2h'
-	True
-	>>> limit_unit('1d2h3m2s', 1) == '1d'
-	True
-	'''
-	l = len(timestr)
-	i = 0
-	p = 0
-	while i < num and p <= l:
-		at = 0
-		while p < l:
-			c = timestr[p]
-			if at == 0:
-				if c.isdigit():
-					p += 1
-				else:
-					at += 1
-			elif at == 1:
-				if not c.isdigit():
-					p += 1
-				else:
-					at += 1
-			else:
-				break
-
-		i += 1
-
-	return timestr[:p]
-
-def human_time_short(seconds):
-	return limit_unit(human_time(seconds))
-
-def interpret_size(si):
-	'''
-	>>> interpret_size(10)
-	10
-	>>> interpret_size('10')
-	10
-	>>> interpret_size('10b')
-	10
-	>>> interpret_size('10k')
-	10240
-	>>> interpret_size('10K')
-	10240
-	>>> interpret_size('10kb')
-	10240
-	>>> interpret_size('10kB')
-	10240
-	>>> interpret_size('a10')
-	Traceback (most recent call last):
-	ValueError
-	>>> interpret_size('10a')
-	Traceback (most recent call last):
-	KeyError: 'A'
-	'''
-	m = re.match(r"\s*(\d+)\s*([ac-z]?)(b?)\s*$", str(si), re.I)
-	if m:
-		if not m.group(2) and m.group(3):
-			times = 1
-		else:
-			times = SIPrefixTimes[m.group(2).upper()] if m.group(2) else 1
-		return int(m.group(1)) * times
-	else:
-		raise ValueError
-
-def human_num(num, precision = 0, filler = ''):
-	# https://stackoverflow.com/questions/15263597/python-convert-floating-point-number-to-certain-precision-then-copy-to-string/15263885#15263885
-	numfmt = '{{:.{}f}}'.format(precision)
-	exp = math.log(num, OneK) if num > 0 else 0
-	expint = int(math.floor(exp))
-	maxsize = len(SIPrefixNames) - 1
-	if expint > maxsize:
-		pwarn("Ridiculously large number '{}' passed to 'human_num()'".format(num))
-		expint = maxsize
-	unit = SIPrefixNames[expint]
-	return numfmt.format(num / float(OneK ** expint)) + filler + unit
-
-def human_size(num, precision = 3):
-	''' DocTests:
-	>>> human_size(1000, 0) == '1000B'
-	True
-	>>> human_size(1025) == '1.001kB'
-	True
-	'''
-	return human_num(num, precision) + 'B'
-
-def human_speed(speed, precision = 0):
-	return human_num(speed, precision) + 'B/s'
-
 # no leading, trailing '/'
 # remote path rule:
 #  - all public methods of ByPy shall accept remote path as "partial path"
@@ -439,94 +304,6 @@ def get_pcs_path(path):
 def is_pcs_root_path(path):
 	return path == AppPcsPath or path == AppPcsPath + '/'
 
-# guarantee no-exception
-def copyfile(src, dst):
-	result = ENoError
-	try:
-		shutil.copyfile(src, dst)
-	except (shutil.Error, IOError) as ex:
-		perr("Fail to copy '{}' to '{}'.\n{}".format(
-			src, dst, formatex(ex)))
-		result = EFailToCreateLocalFile
-
-	return result
-
-def movefile(src, dst):
-	result = ENoError
-	try:
-		shutil.move(src, dst)
-	except (shutil.Error, OSError) as ex:
-		perr("Fail to move '{}' to '{}'.\n{}".format(
-			src, dst, formatex(ex)))
-		result = EFailToCreateLocalFile
-
-	return result
-
-def removefile(path, verbose = False):
-	result = ENoError
-	try:
-		if verbose:
-			pr("Removing local file '{}'".format(path))
-		if path:
-			os.remove(path)
-	except Exception as ex:
-		perr("Fail to remove local fle '{}'.\n{}".format(
-			path, formatex(ex)))
-		result = EFailToDeleteFile
-
-	return result
-
-def removedir(path, verbose = False):
-	result = ENoError
-	try:
-		if verbose:
-			pr("Removing local directory '{}'".format(path))
-		if path:
-			shutil.rmtree(path)
-	except Exception as ex:
-		perr("Fail to remove local directory '{}'.\n{}".format(
-			path, formatex(ex)))
-		result = EFailToDeleteDir
-
-	return result
-
-def makedir(path, mode = 0o777, verbose = False):
-	result = ENoError
-
-	if verbose:
-		pr("Creating local directory '{}'".format(path))
-
-	if path and not os.path.exists(path):
-		try:
-			os.makedirs(path, mode)
-		except os.error as ex:
-			perr("Failed at creating local dir '{}'.\n{}".format(
-				path, formatex(ex)))
-			result = EFailToCreateLocalDir
-
-	return result
-
-# guarantee no-exception
-def getfilesize(path):
-	size = -1
-	try:
-		size = os.path.getsize(path)
-	except os.error as ex:
-		perr("Exception occured while getting size of '{}'.\n{}".format(
-			path, formatex(ex)))
-
-	return size
-
-# guarantee no-exception
-def getfilemtime(path):
-	mtime = -1
-	try:
-		mtime = os.path.getmtime(path)
-	except os.error as ex:
-		perr("Exception occured while getting modification time of '{}'.\n{}".format(
-			path, formatex(ex)))
-
-	return mtime
 
 def getfilemtime_int(path):
 	# just int it, this is reliable no matter how stat_float_times() is changed
