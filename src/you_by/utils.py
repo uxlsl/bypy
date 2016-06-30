@@ -85,3 +85,14 @@ def pinfo(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 def pdbg(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 	return plog('<D> ', msg, showtime, showdate, prefix, suffix, TermColor.Cyan)
 
+
+def bannerwarn(msg):
+	print('!' * 160)
+	print(msg)
+	print('!' * 160)
+
+
+def iswindows():
+	return os.name == 'nt'
+
+
