@@ -1171,8 +1171,8 @@ class ByPy(object):
 	def getcertfile(self):
 		result = ENoError
 		if not os.path.exists(self.__certspath):
-			if os.path.exists(ByPyCertsFileName):
-				result = copyfile(ByPyCertsFileName, self.__certspath)
+			if os.path.exists(config.ByPyCertsFileName):
+				result = copyfile(config.ByPyCertsFileName, self.__certspath)
 			else:
 				try:
 					# perform a simple download from github
@@ -1777,7 +1777,7 @@ Possible fixes:
 			'redirect_uri' : 'oob',
 			'scope' : 'basic netdisk' }
 		pars = ulp.urlencode(params)
-		msg = 'Please visit:\n{}\nAnd authorize this app'.format(ServerAuthUrl + '?' + pars) + \
+		msg = 'Please visit:\n{}\nAnd authorize this app'.format(config.ServerAuthUrl + '?' + pars) + \
 			'\nPaste the Authorization Code here within 10 minutes.'
 		auth_code = ask(msg).strip()
 		self.pd("auth_code: {}".format(auth_code))
