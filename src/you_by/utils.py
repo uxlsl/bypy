@@ -95,4 +95,46 @@ def bannerwarn(msg):
 def iswindows():
 	return os.name == 'nt'
 
+def askc(msg, enter = True):
+	pr(msg)
+	if enter:
+		pr('Press [Enter] when you are done')
+	return raw_input()
+
+ask = askc
+
+# print progress
+# https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
+def pprgrc(finish, total, start_time = None, existing = 0,
+		prefix = '', suffix = '', seg = 20):
+	# we don't want this goes to the log, so we use stderr
+	if total > 0:
+		segth = seg * finish // total
+		percent = 100 * finish // total
+		current_batch_percent = 100 * (finish - existing) // total
+	else:
+		segth = seg
+		percent = 100
+	eta = ''
+	now = time.time()
+	if start_time is not None and current_batch_percent > 5 and finish > 0:
+		finishf = float(finish) - float(existing)
+		totalf = float(total)
+		remainf = totalf - float(finish)
+		elapsed = now - start_time
+		speed = human_speed(finishf / elapsed)
+		eta = 'ETA: ' + human_time_short(elapsed * remainf / finishf) + \
+				' (' + speed + ', ' + \
+				human_time_short(elapsed) + ' gone)'
+	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * '_' + ']' + \
+		" {}% ({}/{})".format(percent, human_size(finish, 1), human_size(total, 1)) + \
+		' ' + eta + suffix
+	#msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * '_' + ']' + \
+	#	" {}% ({}/{})".format(percent, human_size(finish), human_size(total)) + \
+	#	' ' + eta + suffix
+	sys.stderr.write(msg + ' ') # space is used as a clearer
+	sys.stderr.flush()
+
+pprgr = pprgrc
+
 
