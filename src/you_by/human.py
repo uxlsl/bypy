@@ -1,4 +1,7 @@
 import re
+import math
+
+from constants import OneK, SIPrefixNames
 
 def limit_unit(timestr, num = 2):
 	''' DocTests:

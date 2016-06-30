@@ -96,12 +96,9 @@ except:
 		print("Something seems wrong with the urllib3 installation.\nQuitting")
 		sys.exit(EFatal)
 from config import (
-        OneM,
-        OneK,
         AuthServerList,
         ApiKey,
         SecretKey,
-        SIPrefixTimes,
         AppPcsPath,
         PcsDomain,
         PcsUrl,
@@ -111,7 +108,6 @@ from config import (
         ByPyCertsFileName,
         CaCertsOption,
         CacheSavePeriodInSec,
-        SIPrefixNames,
         TokenUrl,
         DisableSslCheckOption,
         CleanOptionShort,
@@ -158,7 +154,8 @@ from utils import (
         getfilemtime,
         )
 from human import (
-	interpret_size
+	interpret_size,
+        human_size,
 )
 from constants import (
 		ENoError,
@@ -182,6 +179,7 @@ from constants import (
 # internal errors
 		IEMD5NotFound,
 		IESuperfileCreationFailed,
+        OneM,
 		)
 
 

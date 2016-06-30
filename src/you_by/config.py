@@ -4,26 +4,11 @@ from os.path import expanduser
 import os
 import time
 
-
-OneK = 1024
-OneM = OneK * OneK
-OneG = OneM * OneK
-OneT = OneG * OneK
-OneP = OneT * OneK
-OneE = OneP * OneK
-OneZ = OneE * OneK
-OneY = OneZ * OneK
-SIPrefixNames = [ '', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
-
-SIPrefixTimes = {
-	'K' : OneK,
-	'M' : OneM,
-	'G' : OneG,
-	'T' : OneT,
-	'E' : OneE,
-	'Z' : OneZ,
-	'Y' : OneY }
-
+from constants import (
+    OneK,
+    OneM,
+    OneG,
+)
 
 ### Auth servers
 GaeUrl = 'https://bypyoauth.appspot.com'

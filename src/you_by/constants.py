@@ -1,5 +1,24 @@
 # -*- coding:utf-8 -*-
 
+OneK = 1024
+OneM = OneK * OneK
+OneG = OneM * OneK
+OneT = OneG * OneK
+OneP = OneT * OneK
+OneE = OneP * OneK
+OneZ = OneE * OneK
+OneY = OneZ * OneK
+SIPrefixNames = [ '', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
+
+SIPrefixTimes = {
+	'K' : OneK,
+	'M' : OneM,
+	'G' : OneG,
+	'T' : OneT,
+	'E' : OneE,
+	'Z' : OneZ,
+	'Y' : OneY }
+
 ### return (error) codes
 # they are put at the top because:
 # 1. they have zero dependencies
