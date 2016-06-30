@@ -98,8 +98,8 @@ from utils import (
         pinfo,
         pr,
         pwarn,
-		bannerwarn,
-		iswindows,
+	bannerwarn,
+	iswindows,
 )
 from constants import (
 	ENoError,
@@ -130,79 +130,11 @@ from constants import (
 	IESuperfileCreationFailed,
 )
 
-### special variables that say about this module
-__version__ = '1.2.22'
-
-DownloaderAria2 = 'aria2'
-Downloaders = [DownloaderAria2]
-DownloaderDefaultArgs = {
-	DownloaderAria2 : "-c -k10M -x4 -s4  --file-allocation=none"
-}
-
 # version check must pass before any further action
 import sys
-if iswindows():
-	bannerwarn("You are running Python on Windows, which doesn't support Unicode so well.\n"
-		"Files with non-ASCII names may not be handled correctly.")
-
-FileSystemEncoding = sys.getfilesystemencoding()
-
-## Import-related constant strings
-PipBinaryName = 'pip' + str(sys.version_info[0])
-PipInstallCommand = PipBinaryName + ' install requests'
-PipUpgradeCommand = PipBinaryName + ' install -U requests'
-if sys.version_info[0] < 2 \
-or (sys.version_info[0] == 2 and sys.version_info[1] < 7) \
-or (sys.version_info[0] == 3 and sys.version_info[1] < 3):
-	print("Error: Incorrect Python version. You need 2.7 / 3.3 or above")
-	sys.exit(EIncorrectPythonVersion)
 import io
 import locale
 import codecs
-
-SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
-# we have warned Windows users, so the following is for *nix users only
-if SystemEncoding:
-	sysencu = SystemEncoding.upper()
-	if sysencu != 'UTF-8' and sysencu != 'UTF8':
-		err = "WARNING: System locale is not 'UTF-8'.\n" \
-			  "Files with non-ASCII names may not be handled correctly.\n" \
-			  "You should set your System Locale to 'UTF-8'.\n" \
-			  "Current locale is '{}'".format(SystemEncoding)
-		bannerwarn(err)
-else:
-	# ASSUME UTF-8 encoding, if for whatever reason,
-	# we can't get the default system encoding
-	SystemEncoding = 'utf-8'
-	bannerwarn("WARNING: Can't detect the system encoding, assume it's 'UTF-8'.\n"
-		  "Files with non-ASCII names may not be handled correctly." )
-
-# no idea who screws the sys.stdout.encoding
-# the locale is 'UTF-8', sys.stdin.encoding is 'UTF-8',
-# BUT, sys.stdout.encoding is None ...
-def fixenc(stdenc):
-	if iswindows():
-		bannerwarn("WARNING: StdOut encoding '{}' is unable to encode CJK strings.\n" \
-			"Files with non-ASCII names may not be handled correctly.".format(stdenc))
-	else:
-		# fix by @xslidian
-		if not stdenc:
-			stdenc = 'utf-8'
-		sys.stdout = codecs.getwriter(stdenc)(sys.stdout)
-		sys.stderr = codecs.getwriter(stdenc)(sys.stderr)
-
-stdenc = sys.stdout.encoding
-if stdenc:
-	stdencu = stdenc.upper()
-	if not (stdencu == 'UTF8' or stdencu == 'UTF-8'):
-		print("Encoding for StdOut: {}".format(stdenc))
-		try:
-			'\u6c49\u5b57'.encode(stdenc) # '汉字'
-		except: # (LookupError, TypeError, UnicodeEncodeError):
-			fixenc(stdenc)
-else:
-	fixenc(stdenc)
-
 import signal
 import time
 import shutil
@@ -242,14 +174,7 @@ import math
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import subprocess
-## non-standard python library, needs 'pip install ...'
-try:
-	import requests
-except:
-	print("Fail to import the 'requests' library.\n"
-		"You need to install it by running '{}".format(PipInstallCommand))
-	raise
-
+import requests
 try:
 	from requests.packages.urllib3.exceptions import ReadTimeoutError
 except:
@@ -259,21 +184,14 @@ except:
 		print("Something seems wrong with the urllib3 installation.\nQuitting")
 		sys.exit(EFatal)
 
-# there was a WantWriteError uncaught exception for Urllib3:
-# https://github.com/shazow/urllib3/pull/412
-# it was fixed here:
-# https://github.com/shazow/urllib3/pull/413
-# commit:
-# https://github.com/shazow/urllib3/commit/a89dda000ed144efeb6be4e0b417c0465622fe3f
-# and this was included in this commit in the Requests library
-# https://github.com/kennethreitz/requests/commit/7aa6c62d6d917e11f81b166d1d6c9e60340783ac
-# which was included in version 2.5.0 or above
-# so minimum 2.5.0 is required
-requests_version = requests.__version__.split('.')
-if int(requests_version[0]) < 2 or (requests_version[0] == 2 and requests_version[1] < 5):
-	print("Your version of Python Requests library is too low (minimum version 2.5.0 is required).\n"
-		  "You can run '{}' to upgrade it to the latest version.".format(PipUpgradeCommand))
-	raise
+
+__version__ = '1.2.22'
+
+DownloaderAria2 = 'aria2'
+Downloaders = [DownloaderAria2]
+DownloaderDefaultArgs = {
+	DownloaderAria2 : "-c -k10M -x4 -s4  --file-allocation=none"
+}
 
 #### Definitions that are real world constants
 pcsurl  = PcsUrl
@@ -285,6 +203,56 @@ RefreshServerList = AuthServerList
 
 ### public static properties
 HelpMarker = "Usage:"
+
+
+def env_check():
+	requests_version = requests.__version__.split('.')
+	if int(requests_version[0]) < 2 or (requests_version[0] == 2 and requests_version[1] < 5):
+		print("Your version of Python Requests library is too low (minimum version 2.5.0 is required).\n"
+			  "You can run '{}' to upgrade it to the latest version.".format(PipUpgradeCommand))
+		raise
+	SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
+	# we have warned Windows users, so the following is for *nix users only
+	if SystemEncoding:
+		sysencu = SystemEncoding.upper()
+		if sysencu != 'UTF-8' and sysencu != 'UTF8':
+			err = "WARNING: System locale is not 'UTF-8'.\n" \
+				  "Files with non-ASCII names may not be handled correctly.\n" \
+				  "You should set your System Locale to 'UTF-8'.\n" \
+				  "Current locale is '{}'".format(SystemEncoding)
+			bannerwarn(err)
+	else:
+		# ASSUME UTF-8 encoding, if for whatever reason,
+		# we can't get the default system encoding
+		SystemEncoding = 'utf-8'
+		bannerwarn("WARNING: Can't detect the system encoding, assume it's 'UTF-8'.\n"
+			  "Files with non-ASCII names may not be handled correctly." )
+
+	# no idea who screws the sys.stdout.encoding
+	# the locale is 'UTF-8', sys.stdin.encoding is 'UTF-8',
+	# BUT, sys.stdout.encoding is None ...
+	def fixenc(stdenc):
+		if iswindows():
+			bannerwarn("WARNING: StdOut encoding '{}' is unable to encode CJK strings.\n" \
+				"Files with non-ASCII names may not be handled correctly.".format(stdenc))
+		else:
+			# fix by @xslidian
+			if not stdenc:
+				stdenc = 'utf-8'
+			sys.stdout = codecs.getwriter(stdenc)(sys.stdout)
+			sys.stderr = codecs.getwriter(stdenc)(sys.stderr)
+
+	stdenc = sys.stdout.encoding
+	if stdenc:
+		stdencu = stdenc.upper()
+		if not (stdencu == 'UTF8' or stdencu == 'UTF-8'):
+			print("Encoding for StdOut: {}".format(stdenc))
+			try:
+				'\u6c49\u5b57'.encode(stdenc) # '汉字'
+			except: # (LookupError, TypeError, UnicodeEncodeError):
+				fixenc(stdenc)
+	else:
+		fixenc(stdenc)
 
 
 def askc(msg, enter = True):
@@ -4215,6 +4183,7 @@ def main(argv=None): # IGNORE:C0111
 	''' Main Entry '''
 
 	try:
+		env_check()
 		result = ENoError
 		if argv is None:
 			argv = sys.argv
