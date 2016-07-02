@@ -180,6 +180,7 @@ from constants import (
 		IEMD5NotFound,
 		IESuperfileCreationFailed,
         OneM,
+		OneK,
 		)
 
 
@@ -510,7 +511,6 @@ class cached(object):
 		if not cached.cacheloaded: # no double-loading
 			if cached.verbose:
 				pr("Loading Hash Cache File '{}'...".format(cached.hashcachepath))
-
 			if os.path.exists(cached.hashcachepath):
 				try:
 					cached.cache = jsonload(cached.hashcachepath)

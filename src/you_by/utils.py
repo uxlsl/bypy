@@ -120,7 +120,7 @@ def askc(msg, enter = True):
 	pr(msg)
 	if enter:
 		pr('Press [Enter] when you are done')
-	return raw_input()
+	return input()
 
 ask = askc
 
