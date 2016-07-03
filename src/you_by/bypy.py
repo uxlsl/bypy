@@ -157,6 +157,7 @@ from human import (
 	interpret_size,
         human_size,
 )
+from tasks import upload
 from constants import (
 		ENoError,
 		EArgument,
@@ -182,7 +183,6 @@ from constants import (
         OneM,
 		OneK,
 		)
-
 
 __version__ = '1.2.22'
 
@@ -1901,14 +1901,16 @@ get information of the given path (dir / file) at Baidu Yun.
 				files = { 'file' : ('file', self.__current_slice) } )
 
 	def __update_progress_entry(self, fullpath):
-		progress = jsonload(ProgressPath)
-		progress[fullpath]=(self.__slice_size, self.__slice_md5s)
-		jsondump(progress, ProgressPath)
+		# progress = jsonload(ProgressPath)
+		# progress[fullpath]=(self.__slice_size, self.__slice_md5s)
+		# jsondump(progress, ProgressPath)
+		pass
 
 	def __delete_progress_entry(self, fullpath):
-		progress = jsonload(ProgressPath)
-		del progress[fullpath]
-		jsondump(progress, ProgressPath)
+		# progress = jsonload(ProgressPath)
+		# del progress[fullpath]
+		# jsondump(progress, ProgressPath)
+		pass
 
 	def __upload_file_slices(self, localpath, remotepath, ondup = 'overwrite'):
 		pieces = MaxSlicePieces
@@ -3149,9 +3151,7 @@ if not specified, it defaults to the root directory
 #					result = self.move(remotedir + '/' + p, remotedir + '/' + p + '.moved_by_bypy.' + time.strftime("%Y%m%d%H%M%S"))
 #					self.__isrev = False
 				if t == 'F' or t == 'FD':
-					subresult = self.__upload_file(lcpath, rcpath)
-					if subresult != ENoError:
-						result = subresult
+					upload.delay(lcpath, rcpath)
 				else: # " t == 'DF' " must be true
 					subresult = self.__mkdir(rcpath)
 					if subresult != ENoError:
@@ -3168,9 +3168,7 @@ if not specified, it defaults to the root directory
 			self.pd("local type: {}".format(t))
 			self.__isrev = False
 			if t == 'F':
-				subresult = self.__upload_file(lcpath, rcpath)
-				if subresult != ENoError:
-					result = subresult
+				upload.delay(lcpath, rcpath)
 			else: # " t == 'D' " must be true
 				subresult = self.__mkdir(rcpath)
 				if subresult != ENoError:

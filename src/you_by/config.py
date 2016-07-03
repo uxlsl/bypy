@@ -90,8 +90,7 @@ SettingKey_OverwriteRemoteTempDir = 'overwriteRemoteTempDir'
 #UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
 UserAgent = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
 DefaultSliceInMB = 20
-# DefaultSliceSize = 20 * OneM
-DefaultSliceSize = 0
+DefaultSliceSize = 20 * OneM
 DefaultDlChunkSize = 20 * OneM
 RetryDelayInSec = 10
 ## global variables
